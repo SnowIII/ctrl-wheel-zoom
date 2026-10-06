@@ -1,0 +1,5 @@
+# 统一换行，避免 Windows/macOS 之间反复「整个文件都改了」
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.zip binary

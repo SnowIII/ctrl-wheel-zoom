@@ -1,0 +1,72 @@
+/* 界面缩放（Ctrl+滚轮）设置面板样式。
+   只用 px：本文件也会被内核的视口单位补偿扫描，px 值不受影响，也不需要补偿。 */
+
+.cwz-settings .inline-drawer-content {
+    padding-top: 6px;
+}
+
+.cwz-block {
+    margin: 8px 0 10px;
+}
+
+.cwz-block-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.cwz-level-value {
+    font-weight: 600;
+    color: var(--SmartThemeBodyColor, #dddddd);
+}
+
+.cwz-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 6px;
+}
+
+.cwz-presets .menu_button {
+    flex: 1 1 0;
+    min-width: 52px;
+    text-align: center;
+}
+
+.cwz-note {
+    margin-top: 10px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: var(--black50a, rgba(0, 0, 0, 0.25));
+    border: 1px solid var(--SmartThemeBorderColor, rgba(255, 255, 255, 0.15));
+    color: var(--white70a, rgba(255, 255, 255, 0.72));
+    font-size: 0.86em;
+    line-height: 1.55;
+}
+
+.cwz-note code {
+    font-size: 0.94em;
+    padding: 0 3px;
+    border-radius: 3px;
+    background: rgba(128, 128, 128, 0.22);
+}
+
+.cwz-status {
+    margin-top: 8px;
+    font-size: 0.8em;
+    opacity: 0.65;
+    line-height: 1.4;
+}
+
+.cwz-status-error {
+    opacity: 1;
+    color: var(--SmartThemeEmColor, #d98c8c);
+}
+
+.cwz-settings.cwz-disabled .cwz-block,
+.cwz-settings.cwz-disabled .cwz-note {
+    opacity: 0.5;
+    pointer-events: none;
+}

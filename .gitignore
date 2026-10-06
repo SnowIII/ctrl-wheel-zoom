@@ -1,0 +1,9 @@
+# 杂项
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+node_modules/
+
+# 打包产物（发布用的 zip 放在仓库外）
+*.zip

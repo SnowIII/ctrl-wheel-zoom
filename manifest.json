@@ -1,0 +1,12 @@
+{
+  "display_name": "界面缩放（Ctrl+滚轮）",
+  "loading_order": 25,
+  "requires": [],
+  "optional": [],
+  "js": "index.js",
+  "css": "style.css",
+  "author": "SnowIII",
+  "version": "1.0.0",
+  "homePage": "https://github.com/SnowIII/ctrl-wheel-zoom",
+  "auto_update": true
+}

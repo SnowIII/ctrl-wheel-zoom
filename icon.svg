@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="界面缩放">
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#2b2b33"/>
+  <circle cx="28" cy="28" r="14" fill="none" stroke="#e8e8f0" stroke-width="4"/>
+  <line x1="38.5" y1="38.5" x2="52" y2="52" stroke="#e8e8f0" stroke-width="6" stroke-linecap="round"/>
+  <line x1="21" y1="28" x2="35" y2="28" stroke="#8fc7ff" stroke-width="4" stroke-linecap="round"/>
+  <line x1="28" y1="21" x2="28" y2="35" stroke="#8fc7ff" stroke-width="4" stroke-linecap="round"/>
+</svg>
