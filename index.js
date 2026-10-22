@@ -8,13 +8,16 @@
  */
 
 import { createZoomController, ZOOM_LEVELS, DEFAULT_ZOOM } from './zoom-core.js';
+import { createFrontendViewportKeeper } from './frontend-viewport.js';
 
 export const EXTENSION_ID = 'ctrl-wheel-zoom';
-export const VERSION = '1.0.0';
+export const VERSION = '1.1.0';
 
 const STORAGE_KEY = 'tt-ctrl-wheel-zoom';
 const PANEL_CONTAINERS = ['#extensions_settings2', '#extensions_settings', '#extensionsMenu'];
 
+// frontendWidth：卡片前端 iframe 的逻辑宽度下限（0 = 关闭）。默认 1200 是为了越过
+// 卡片前端里常见的 `@media (max-width: 1000px)` 断点，让它保持桌面版布局。
 const DEFAULTS = Object.freeze({
     enabled: true,
     zoom: DEFAULT_ZOOM,
@@ -22,6 +25,8 @@ const DEFAULTS = Object.freeze({
     hotkeys: true,
     indicator: true,
     compat: true,
+    frontendEnabled: true,
+    frontendWidth: 1200,
 });
 
 function loadSettings() {
@@ -49,6 +54,8 @@ function persist(controller) {
         hotkeys: state.hotkeys,
         indicator: state.indicator,
         compat: state.compat,
+        frontendEnabled: frontendKeeper.getState().enabled,
+        frontendWidth: frontendKeeper.getState().minWidth,
     };
     try {
         window.localStorage?.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -59,13 +66,31 @@ function persist(controller) {
 
 const isTauriTavern = Boolean(window.__TAURITAVERN__);
 
-const controller = createZoomController(loadSettings());
+const initialSettings = loadSettings();
+const controller = createZoomController(initialSettings);
+
+function applyFrontendWidth(value) {
+    const numeric = Number(value);
+    const width = Number.isFinite(numeric) ? Math.max(0, Math.round(numeric)) : 0;
+    frontendKeeper.setEnabled(width > 0);
+    frontendKeeper.setMinWidth(width > 0 ? width : DEFAULTS.frontendWidth);
+}
+
+let notifyPanel = null;
+
+const frontendKeeper = createFrontendViewportKeeper({
+    enabled: initialSettings.frontendEnabled !== false,
+    minWidth: initialSettings.frontendWidth > 0 ? initialSettings.frontendWidth : DEFAULTS.frontendWidth,
+    onChange: () => notifyPanel?.(),
+});
 
 // 诊断入口：控制台里可以 __ctrlWheelZoom.getState() / setZoom(150)
 window.__ctrlWheelZoom = {
     version: VERSION,
     controller,
-    getState: () => controller.getState(),
+    frontendKeeper,
+    getState: () => ({ ...controller.getState(), frontend: frontendKeeper.getState() }),
+    setFrontendWidth: applyFrontendWidth,
 };
 
 controller.subscribe(() => persist(controller));
@@ -116,6 +141,18 @@ const PANEL_HTML = `
         <span>JS 视口/坐标兼容（卡片前端、拖拽一起缩放）</span>
       </label>
 
+      <label class="checkbox_label" for="cwz_frontend">
+        <input type="checkbox" id="cwz_frontend">
+        <span>卡片前端保持桌面版（按卡片断点给渲染 iframe 更宽的逻辑视口）</span>
+      </label>
+      <div class="cwz-block" id="cwz_frontend_block">
+        <div class="cwz-block-head">
+          <span>逻辑视口宽度上限</span>
+          <span class="cwz-level-value" id="cwz_frontend_value">1200px</span>
+        </div>
+        <input type="range" id="cwz_frontend_width" class="neo-range-slider" min="800" max="1920" step="20" value="1200">
+      </div>
+
       <div class="cwz-note">
         缩放走的是 CSS <code>zoom</code>：内核会把文档里的视口单位（<code>vw</code>/<code>vh</code>）
         折算成 <code>calc(原值 / 倍数)</code>，所以百分比布局、flex 与固定定位元素都会等比缩放。
@@ -124,6 +161,13 @@ const PANEL_HTML = `
         统一改按"缩放后的布局坐标"报告——和真实浏览器缩放一致。卡片前端（HUD 之类）
         按窗口像素算出来的尺寸因此会跟着缩放，拖拽也精确；关掉它则这两项都会偏离
         （拖拽会放大 <i>倍数</i> 倍）。若某个扩展在缩放后定位异常，可先关掉这个开关排查。
+        <br>
+        <b>卡片前端保持桌面版</b>（默认开）：酒馆助手把每一楼的前端渲染在 iframe 里，
+        它只有聊天列那么宽（约 950–1000px），常会命中卡片自带的手机版断点，于是变窄变长、
+        填不满聊天框。打开后扩展会读卡片自己的 <code>@media</code> 断点，把 iframe 的逻辑视口
+        抬到刚好越过断点（例如 967 → 1001，只缩 3%），再用 <code>zoom</code> 缩回原视觉宽度：
+        卡片按桌面版排版，看起来几乎和原来一样大。没有大断点的卡片（固定宽度设计）不会被碰。
+        断点比上面的宽度上限还宽时，把那根滑块往右拉即可。排版反而乱了就关掉这项。
       </div>
 
       <div class="cwz-status" id="cwz_status"></div>
@@ -159,6 +203,10 @@ function buildPanel() {
     const hotkeys = $('#cwz_hotkeys');
     const indicator = $('#cwz_indicator');
     const compat = $('#cwz_compat');
+    const frontend = $('#cwz_frontend');
+    const frontendBlock = $('#cwz_frontend_block');
+    const frontendSlider = $('#cwz_frontend_width');
+    const frontendValue = $('#cwz_frontend_value');
     const slider = $('#cwz_level');
     const levelValue = $('#cwz_level_value');
     const status = $('#cwz_status');
@@ -170,6 +218,12 @@ function buildPanel() {
         hotkeys.checked = state.hotkeys;
         indicator.checked = state.indicator;
         compat.checked = state.compat;
+        const frontendState = frontendKeeper.getState();
+        frontend.checked = frontendState.enabled;
+        frontendSlider.value = String(frontendState.minWidth);
+        frontendValue.textContent = `${frontendState.minWidth}px`;
+        frontendBlock.classList.toggle('cwz-block-off', !frontendState.enabled);
+        frontendSlider.disabled = !frontendState.enabled;
         slider.value = String(Math.max(0, ZOOM_LEVELS.indexOf(state.zoom)));
         levelValue.textContent = `${state.zoom}%`;
         panel.classList.toggle('cwz-disabled', !state.enabled);
@@ -186,6 +240,14 @@ function buildPanel() {
             if (state.layoutOverflow && state.zoom !== 100) {
                 parts.push('有元素未跟随缩放（脚本按窗口像素写死尺寸，见 README 的 --cwz-zoom）');
             }
+            if (frontendState.enabled && frontendState.applied.length) {
+                const targets = [...new Set(frontendState.applied.map((item) => item.target))];
+                parts.push(`前端虚拟视口 ${targets.join('/')}px（${frontendState.applied.length} 楼）`);
+            }
+            if (frontendState.tooWide?.length) {
+                const widest = Math.max(...frontendState.tooWide.map((item) => item.breakpoint));
+                parts.push(`有楼层断点在 ${widest}px，比宽度上限还宽，把滑块往右拉`);
+            }
             status.textContent = parts.join(' · ');
         }
     };
@@ -195,6 +257,18 @@ function buildPanel() {
     hotkeys.addEventListener('change', () => controller.setOption('hotkeys', hotkeys.checked));
     indicator.addEventListener('change', () => controller.setOption('indicator', indicator.checked));
     compat.addEventListener('change', () => controller.setOption('compat', compat.checked));
+
+    frontend.addEventListener('change', () => {
+        frontendKeeper.setEnabled(frontend.checked);
+        persist(controller);
+        render();
+    });
+
+    frontendSlider.addEventListener('input', () => {
+        applyFrontendWidth(Number(frontendSlider.value));
+        persist(controller);
+        render();
+    });
 
     slider.addEventListener('input', () => {
         const zoom = ZOOM_LEVELS[Number(slider.value)] ?? DEFAULT_ZOOM;
@@ -206,6 +280,7 @@ function buildPanel() {
     }
 
     controller.subscribe(render);
+    notifyPanel = render;
     render();
 }
 

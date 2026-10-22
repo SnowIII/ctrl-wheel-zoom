@@ -53,6 +53,10 @@
     background: rgba(128, 128, 128, 0.22);
 }
 
+.cwz-block-off {
+    opacity: 0.45;
+}
+
 .cwz-status {
     margin-top: 8px;
     font-size: 0.8em;
